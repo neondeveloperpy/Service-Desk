@@ -349,7 +349,8 @@ hr {
 .topbar-actions {
     display: flex;
     align-items: center;
-    gap: 13px;
+    justify-content: center;
+    gap: 16px;
 }
 
 .topbar-avatar {
@@ -357,22 +358,60 @@ hr {
     color: var(--primary);
 }
 
-.theme-toggle {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--border-strong);
-    border-radius: 7px;
-    background: var(--surface);
-    color: var(--text);
+
+/* =========================================
+   THEME TOGGLE - OVERRIDE PICO CSS
+========================================= */
+
+button.theme-toggle,
+.topbar-actions button.theme-toggle {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    background: var(--surface) !important;
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 8px !important;
+
+    box-shadow: none !important;
+    line-height: 1 !important;
+    text-align: center !important;
+
     cursor: pointer;
 }
 
-.theme-toggle:hover {
-    background: var(--surface-hover);
+button.theme-toggle:hover {
+    background: var(--surface-hover) !important;
+    color: var(--text) !important;
+}
+
+button.theme-toggle:focus,
+button.theme-toggle:focus-visible {
+    outline: 2px solid var(--primary-soft) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+button.theme-toggle svg {
+    display: block !important;
+    width: 19px !important;
+    height: 19px !important;
+    margin: 0 !important;
 }
 
 /* -------------------------
@@ -931,3 +970,187 @@ hr {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================
+   TABLE COLOUR FIX
+   Explicitly override Pico CSS
+========================================= */
+
+.data-table,
+.data-table thead,
+.data-table tbody,
+.data-table tr,
+.data-table th,
+.data-table td {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--text) !important;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    background-color: var(--surface) !important;
+}
+
+.data-table thead,
+.data-table thead tr,
+.data-table th {
+    background-color: var(--surface-hover) !important;
+}
+
+.data-table th {
+    color: var(--muted) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.data-table tbody tr,
+.data-table tbody td {
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+}
+
+.data-table tbody tr:hover,
+.data-table tbody tr:hover td {
+    background-color: var(--surface-hover) !important;
+}
+
+.data-table td {
+    border-bottom: 1px solid var(--border) !important;
+}
+
+.data-table a {
+    color: var(--primary) !important;
+    font-weight: 750;
+}
+
+/* Keep the final row clean */
+.data-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Dark theme */
+[data-theme="dark"] .data-table thead,
+[data-theme="dark"] .data-table th {
+    background-color: #353128 !important;
+}
+
+[data-theme="dark"] .data-table tbody tr,
+[data-theme="dark"] .data-table tbody td {
+    background-color: #292620 !important;
+}
+
+
+/* DOCUMENT EDITOR */
+
+.document-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.document-item-row {
+    padding: 14px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.document-item-fields {
+    display: grid;
+    grid-template-columns: minmax(150px, 2fr) 100px 130px auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.document-item-fields .form-input {
+    margin: 0;
+}
+
+.document-item-row form + form {
+    margin-top: 9px;
+}
+
+.document-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.document-totals > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.document-totals strong {
+    color: var(--text);
+    font-weight: 750;
+}
+
+.document-grand-total {
+    padding-top: 13px;
+    border-top: 1px solid var(--border);
+    font-size: 18px !important;
+    font-weight: 800;
+}
+
+@media (max-width: 700px) {
+    .document-item-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .document-item-fields input:first-child {
+        grid-column: 1 / -1;
+    }
+}
+
+
+/* BUSINESS PAYMENT METHODS */
+
+.payment-method-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.payment-method-card:last-child {
+    border-bottom: 0;
+}
+
+.payment-method-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.payment-method-heading h3 {
+    margin: 0;
+}
+
+.payment-method-details p {
+    margin: 7px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.payment-method-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+@media (max-width: 650px) {
+    .payment-method-card {
+        flex-direction: column;
+    }
+}
+

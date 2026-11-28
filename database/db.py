@@ -6,34 +6,40 @@ from config import DB_PATH, DATA_DIR
 
 def get_connection():
     """
-    Create and return a connection to our SQLite database.
-
-    This function also:
-    - Creates the data folder if it doesn't exist.
-    - Allows us to access database columns by name.
-    - Enables foreign key relationships.
+    Create a database connection.
     """
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     connection = sqlite3.connect(DB_PATH)
-
-    # Allows us to use row["column_name"] instead of row[0].
     connection.row_factory = sqlite3.Row
-
-    # Enable foreign key relationships.
     connection.execute("PRAGMA foreign_keys = ON")
 
     return connection
 
 
-def init_db():
+def add_column_if_missing(conn, table, column, definition):
     """
-    Create all database tables if they don't already exist.
+    Safely add a column to an existing table.
 
-    Running this function multiple times will not delete
-    existing information.
+    This allows us to improve the database without
+    deleting existing records.
     """
+
+    existing_columns = {
+        row["name"]
+        for row in conn.execute(
+            f"PRAGMA table_info({table})"
+        ).fetchall()
+    }
+
+    if column not in existing_columns:
+        conn.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+        )
+
+
+def init_db():
 
     with get_connection() as conn:
 
@@ -85,7 +91,6 @@ def init_db():
 
         # ==========================================
         # SERVICES
-        # Each service belongs to a business.
         # ==========================================
 
         conn.execute("""
@@ -110,10 +115,6 @@ def init_db():
 
         # ==========================================
         # INVOICES AND QUOTES
-        #
-        # Both use the same table.
-        # doc_type determines whether it's an
-        # invoice or a quote.
         # ==========================================
 
         conn.execute("""
@@ -137,7 +138,6 @@ def init_db():
                 currency TEXT DEFAULT 'USD',
 
                 subtotal REAL DEFAULT 0,
-
                 discount REAL DEFAULT 0,
 
                 tax_rate REAL DEFAULT 0,
@@ -168,8 +168,6 @@ def init_db():
 
         # ==========================================
         # DOCUMENT ITEMS
-        # Individual products or services inside
-        # invoices and quotes.
         # ==========================================
 
         conn.execute("""
@@ -178,15 +176,12 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
                 document_id INTEGER NOT NULL,
-
                 service_id INTEGER,
 
                 description TEXT NOT NULL,
 
                 quantity REAL NOT NULL DEFAULT 1,
-
                 unit_price REAL NOT NULL DEFAULT 0,
-
                 line_total REAL NOT NULL DEFAULT 0,
 
                 FOREIGN KEY (document_id)
@@ -200,8 +195,7 @@ def init_db():
         """)
 
         # ==========================================
-        # DOCUMENT NOTES AND COMMENTS
-        # Allows multiple comments per document.
+        # DOCUMENT NOTES
         # ==========================================
 
         conn.execute("""
@@ -210,7 +204,6 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
                 document_id INTEGER NOT NULL,
-
                 body TEXT NOT NULL,
 
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -223,8 +216,6 @@ def init_db():
 
         # ==========================================
         # ATTACHMENTS
-        # We store the file location in the database,
-        # not the actual file contents.
         # ==========================================
 
         conn.execute("""
@@ -235,7 +226,6 @@ def init_db():
                 document_id INTEGER NOT NULL,
 
                 filename TEXT NOT NULL,
-
                 stored_path TEXT NOT NULL,
 
                 uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -247,8 +237,122 @@ def init_db():
         """)
 
         # ==========================================
+        # BUSINESS PAYMENT METHODS
+        # ==========================================
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS business_payment_methods (
+
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                business_id INTEGER NOT NULL,
+
+                method_type TEXT NOT NULL,
+                display_name TEXT DEFAULT '',
+
+                account_name TEXT DEFAULT '',
+                bank_name TEXT DEFAULT '',
+
+                account_number TEXT DEFAULT '',
+                routing_number TEXT DEFAULT '',
+                sort_code TEXT DEFAULT '',
+
+                iban TEXT DEFAULT '',
+                swift_bic TEXT DEFAULT '',
+
+                payment_handle TEXT DEFAULT '',
+                payment_url TEXT DEFAULT '',
+
+                instructions TEXT DEFAULT '',
+
+                is_active INTEGER DEFAULT 1,
+
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                FOREIGN KEY (business_id)
+                    REFERENCES businesses(id)
+                    ON DELETE CASCADE
+            )
+        """)
+
+        # ==========================================
+        # DOCUMENT PAYMENT METHOD SNAPSHOTS
+        #
+        # Copies payment details onto an invoice.
+        # Later changes to business payment settings
+        # will not alter an existing invoice.
+        # ==========================================
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS document_payment_methods (
+
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                document_id INTEGER NOT NULL,
+
+                business_payment_method_id INTEGER,
+
+                method_type TEXT NOT NULL,
+                display_name TEXT DEFAULT '',
+
+                account_name TEXT DEFAULT '',
+                bank_name TEXT DEFAULT '',
+
+                account_number TEXT DEFAULT '',
+                routing_number TEXT DEFAULT '',
+                sort_code TEXT DEFAULT '',
+
+                iban TEXT DEFAULT '',
+                swift_bic TEXT DEFAULT '',
+
+                payment_handle TEXT DEFAULT '',
+                payment_url TEXT DEFAULT '',
+
+                instructions TEXT DEFAULT '',
+
+                display_order INTEGER DEFAULT 0,
+
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                FOREIGN KEY (document_id)
+                    REFERENCES documents(id)
+                    ON DELETE CASCADE,
+
+                FOREIGN KEY (business_payment_method_id)
+                    REFERENCES business_payment_methods(id)
+                    ON DELETE SET NULL
+            )
+        """)
+
+        # ==========================================
+        # DATABASE MIGRATIONS
+        #
+        # These also run against existing databases.
+        # ==========================================
+
+        # Quote-specific information
+        add_column_if_missing(
+            conn, "documents", "valid_until", "TEXT DEFAULT ''"
+        )
+
+        add_column_if_missing(
+            conn, "documents", "assumptions", "TEXT DEFAULT ''"
+        )
+
+        add_column_if_missing(
+            conn, "documents", "exclusions", "TEXT DEFAULT ''"
+        )
+
+        # Link an invoice to its original quote
+        add_column_if_missing(
+            conn,
+            "documents",
+            "source_quote_id",
+            "INTEGER REFERENCES documents(id) ON DELETE SET NULL"
+        )
+
+        # ==========================================
         # INDEXES
-        # Help speed up common database searches.
         # ==========================================
 
         conn.execute("""
@@ -264,6 +368,11 @@ def init_db():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_documents_type_status
             ON documents(doc_type, status)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_documents_source_quote
+            ON documents(source_quote_id)
         """)
 
         conn.execute("""
@@ -284,6 +393,16 @@ def init_db():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_attachments_document
             ON attachments(document_id)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_payment_methods_business
+            ON business_payment_methods(business_id)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_document_payment_methods
+            ON document_payment_methods(document_id)
         """)
 
     print("ServiceDesk database initialized successfully.")
